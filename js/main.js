@@ -158,16 +158,21 @@ function confettiBurst(){
 function showRemainTime(ms){
   const sec=Math.ceil(ms/1000);
   const m=Math.floor(sec/60);
-  const text=`${m}分`;
-  const el=document.createElement('div');
-  el.className='remainEffect';
-  el.textContent=text;
-  const clock=document.getElementById('clock');
-  if(clock){
-    const rect=clock.getBoundingClientRect();
-    const fontSize=rect.width/Math.max(1,text.length);
-    el.style.fontSize=fontSize+'px';
-  }
+const sec = Math.ceil(ms / 1000);
+const m = Math.floor(sec / 60);
+const text = `${m}分`;
+const el = document.createElement('div');
+el.className = 'remainEffect';
+el.textContent = text;
+const clock = document.getElementById('clock');
+if (clock) {
+  const rect = clock.getBoundingClientRect();
+  const fontSize = rect.width / Math.max(1, text.length);
+  el.style.fontSize = fontSize + 'px';
+}
+document.body.appendChild(el);
+setTimeout(() => { el.remove(); }, 1300);
+
   document.body.appendChild(el);
   setTimeout(()=>{el.remove();},1300);
 }
@@ -192,10 +197,9 @@ function onNext(){
   const now=new Date();
   if(timerSet && endDate && now < endDate){
     showRemainTime(endDate - now);
+  }else{
+    confettiBurst();
   }
-  confettiBurst();
-  resetState();
-}
 
 function onResetAlarm(){
   resetState();
