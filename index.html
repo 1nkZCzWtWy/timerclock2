@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>アラーム付きお知らせタイマー時計</title>
 <style>
-  body{margin:0;font-family:system-ui,-apple-system;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f6f7f9;height:100vh;padding-top:12px;padding-bottom:8px}
+  body{margin:0;font-family:system-ui,-apple-system;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f6f7f9;min-height:100vh;height:100dvh;overflow:hidden;padding-top:12px;padding-bottom:8px}
   :root{--ctrl-size:14px;--pill-min-w:96px}
   #controls{margin:18px 0 12px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;justify-items:center}
   input[type=range]{width:100%;max-width:400px}
@@ -68,18 +68,15 @@
 
   // ====== 音声合成 ======
   function pickJaVoice(){
-    if(!('speechSynthesis' in window)) return;
+    if(!('speechSynthesis' in window)) return null;
     const v=speechSynthesis.getVoices();
     const jaVoices=v.filter(vv=>vv.lang && vv.lang.startsWith('ja'));
     const isEnhanced=vv=>((vv.name||'').toLowerCase().includes('enhanced'));
-    jaVoice = jaVoices.find(vv=>isEnhanced(vv) && (vv.name||'').includes('Kyoko'))
-           || jaVoices.find(vv=>isEnhanced(vv) && (vv.name||'').includes('Otoya'))
-           || jaVoices.find(vv=>(vv.name||'').includes('Kyoko'))
-           || jaVoices.find(vv=>(vv.name||'').includes('Otoya'))
-           || jaVoices[0] || null;
-  }
-  if('speechSynthesis' in window){
-    speechSynthesis.onvoiceschanged=pickJaVoice; pickJaVoice();
+    return jaVoices.find(vv=>isEnhanced(vv) && (vv.name||'').includes('Kyoko'))
+        || jaVoices.find(vv=>isEnhanced(vv) && (vv.name||'').includes('Otoya'))
+        || jaVoices.find(vv=>(vv.name||'').includes('Kyoko'))
+        || jaVoices.find(vv=>(vv.name||'').includes('Otoya'))
+        || jaVoices[0] || null;
   }
 
   function beep(){
@@ -100,6 +97,7 @@
   function speakOrBeep(msg){
     if('speechSynthesis' in window && audioUnlocked){
       try{
+        if(!jaVoice) jaVoice = pickJaVoice();
         const u=new SpeechSynthesisUtterance(msg);
         u.lang='ja-JP'; if(jaVoice) u.voice=jaVoice;
         u.pitch=1.0; u.rate=0.9;
@@ -140,6 +138,7 @@
       if(nUnit) nUnit.textContent = (N<=0)? '' : '分ごと';
       if(soundIcon) soundIcon.textContent = (N<=0)? '🔈' : '🔊';
     }
+    drawClock();
   }
 
   // ドラッグなど最初のユーザー操作で音をアンロック
@@ -345,6 +344,7 @@
   function updateDrag(e){
     const a=pointerAngle(e);
     dragMinIdx=minuteIndexFromAngle(a);
+    drawClock();
   }
   function commitTimer(){
     if(dragMinIdx==null) return;
@@ -377,6 +377,7 @@
     speakOrBeep(`タイマースタート。${endH}時${endM}分まであと${rMin}分${rSec}秒です`);
     const actions=document.getElementById('actions');
     if(actions) actions.classList.add('visible');
+    drawClock();
   }
   function onPointerDown(e){
     ensureAudioUnlocked();
@@ -580,7 +581,7 @@
     }
 
     // 5. 針 (現在時刻)
-    const sec=now.getSeconds()+now.getMilliseconds()/1000;
+    const sec=now.getSeconds();
     const min=now.getMinutes()+sec/60;
     const hr=(now.getHours()%12)+min/60;
     const aHr=2*Math.PI*(hr/12)-Math.PI/2;
@@ -676,7 +677,7 @@
       }else{
         hand(R*0.78,10,aMin,mnColor);
       }
-    hand(R-10,5,aSec,'#d11'); // 秒針を延長
+    hand(R-10-2.5,5,aSec,'#d11');
 
     // 6. 中心
     ctx.beginPath(); ctx.arc(0,0,8,0,2*Math.PI);
@@ -687,11 +688,23 @@
   }
 
   // ====== ループ ======
-  function loop(){ drawClock(); tick(); requestAnimationFrame(loop); }
-  loop();
-  // バックグラウンドでもtickが動くよう補助（1秒間隔）
-  setInterval(tick, 1000);
-  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) tick(); });
+  let drawInterval=null;
+  function startLoop(){
+    if(drawInterval) return;
+    drawInterval=setInterval(()=>{ drawClock(); tick(); },1000);
+  }
+  function stopLoop(){
+    if(drawInterval){ clearInterval(drawInterval); drawInterval=null; }
+  }
+  drawClock(); tick(); startLoop();
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.hidden){
+      stopLoop();
+    }else{
+      resizeCanvas();
+      tick(); drawClock(); startLoop();
+    }
+  });
 })();
 </script>
 </body>
