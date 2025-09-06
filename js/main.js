@@ -19,6 +19,7 @@ const soundIcon=$('soundIcon');
 const gate=$('gate');
 const gateBtn=$('gateBtn');
 const nextBtn=$('nextBtn');
+const resetBtn=$('resetBtn');
 
 // ====== 分針ドラッグ用の状態 ======
 let dragging=false;       // ドラッグ中か
@@ -154,94 +155,50 @@ function confettiBurst(){
   }
   // layer自体は維持（使い回し）
 }
-
-// 残り扇形のキラキラ飛散
-function wedgeShatter(){
-  if(!timerSet || !endDate) return;
-  const now=new Date(); if(now >= endDate) return; // 残りがない場合は使わない
-  const rect=clock.getBoundingClientRect();
-  const cx = rect.left + rect.width/2;
-  const cy = rect.top + rect.height/2;
-  const R = Math.min(rect.width, rect.height)/2 - 16;
-  const rWedge = R*0.78;
-  const secNow = now.getSeconds();
-  const minNow = now.getMinutes()+secNow/60;
-  const aNowMin = 2*Math.PI*(minNow/60)-Math.PI/2;
-  const aEnd = timerEndAngle;
-  let span = aEnd - aNowMin; if(span<0) span += 2*Math.PI;
-  if(span<=0) return;
-  const remainExact = Math.max(0, (endDate - now)/60000);
-  const minCount = 60; // confetti と同等の最小量
-  const factor = 12;   // 1分あたりの増加量
-  const count = Math.min(900, Math.max(minCount, Math.round(minCount + remainExact*factor)));
-  const layerId='sparkLayer';
-  let layer=document.getElementById(layerId);
-  if(!layer){ layer=document.createElement('div'); layer.id=layerId; layer.style.cssText='position:fixed;inset:0;pointer-events:none;overflow:visible'; document.body.appendChild(layer); }
-  const colors=['#ff3b30','#ff9500','#ffcc00','#34c759','#5ac8fa','#007aff','#af52de','#ffffff'];
-  const g = 1400; // px/s^2 gravity
-  const T = 1.4;  // total anim seconds
-  const W = window.innerWidth, H = window.innerHeight;
-  for(let i=0;i<count;i++){
-    const el=document.createElement('div');
-    el.className='spark';
-    const w = 4 + Math.random()*10;
-    const h = 3 + Math.random()*8;
-    el.style.width=w+'px'; el.style.height=h+'px';
-    const a = aNowMin + Math.random()*span;
-    const rr = rWedge*(0.4+0.6*Math.random());
-    const x0 = cx + rr*Math.cos(a);
-    const y0 = cy + rr*Math.sin(a);
-    el.style.left='0px'; el.style.top='0px';
-    el.style.transform=`translate(${x0}px, ${y0}px)`;
-    el.style.background=colors[(Math.random()*colors.length)|0];
-    el.style.borderRadius='1px'; el.style.opacity='1';
-    el.style.position='fixed';
-    layer.appendChild(el);
-    // choose velocities: wide horizontal spread; upward or sideways, but don't exceed top boundary
-    // sample lateral displacement across full width uniformly
-    const targetDx = (Math.random() - 0.5) * (W*0.9);
-    // limit max upward excursion so y never goes above 8px from top
-    const maxUp = Math.max(8, Math.min(y0-8, H*0.45));
-    const vy0 = -Math.sqrt(2*g*maxUp) * (0.5+0.5*Math.random());
-    const vx0 = targetDx / T; // reach target lateral range roughly within T
-    const theta0 = Math.random()*360; // deg
-    const omega = (-540 + Math.random()*1080); // deg/s
-    const t0 = performance.now();
-    (function step(){
-      const t = (performance.now()-t0)/1000; // seconds
-      if(t>=T){ el.style.opacity='0'; el.remove(); return; }
-      const x = x0 + vx0*t;
-      let y = y0 + vy0*t + 0.5*g*t*t;
-      if(y < 8) y = 8; // clamp to top edge
-      const ang = theta0 + omega*t;
-      el.style.transform = `translate(${x}px, ${y}px) rotate(${ang}deg)`;
-      el.style.opacity = String(1 - t/T);
-      requestAnimationFrame(step);
-    })();
-  }
+function showRemainTime(ms){
+  const sec=Math.ceil(ms/1000);
+  const m=Math.floor(sec/60);
+  const s=sec%60;
+  const text=m>0?`${m}:${String(s).padStart(2,'0')}`:`${s}`;
+  const el=document.createElement('div');
+  el.className='remainEffect';
+  el.textContent=text;
+  document.body.appendChild(el);
+  setTimeout(()=>{el.remove();},1300);
 }
 
-function resetToInitial(){
-  const now=new Date();
-  if(timerSet && endDate && now < endDate){ wedgeShatter(); }
-  else { confettiBurst(); }
+function resetState(){
   dragging=false; dragMinIdx=null;
   timerLocked=false; timerSet=false;
   endMinuteIdx=null; timerSetTime=null;
   timerStartAngle=null; timerEndAngle=null;
   endDate=null; endAnnounced=false; overrunStart=null;
   forcedMarks=[];
-  // インターバル基準を現在にリセット
   startTime=new Date();
   startSec=startTime.getSeconds();
   startMin=startTime.getMinutes()+startSec/60;
   startHour=(startTime.getHours()%12)+startMin/60;
   scheduleNextNFrom(startTime);
-  // ボタンを隠す（レイアウトは固定）
   const actions=document.getElementById('actions');
   if(actions) actions.classList.remove('visible');
 }
-nextBtn.onclick=resetToInitial;
+
+function onNext(){
+  const now=new Date();
+  if(timerSet && endDate && now < endDate){
+    showRemainTime(endDate - now);
+  }else{
+    confettiBurst();
+  }
+  resetState();
+}
+
+function onResetAlarm(){
+  resetState();
+}
+
+nextBtn.onclick=onNext;
+if(resetBtn) resetBtn.onclick=onResetAlarm;
 
 // ====== Nを変更したらリスタート ======
 function updateSoundUI(){
