@@ -1,4 +1,4 @@
-body{margin:0;font-family:system-ui,-apple-system;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f6f7f9;height:100dvh;overflow:hidden;padding-top:12px;padding-bottom:8px}
+body{margin:0;font-family:system-ui,-apple-system;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f6f7f9;height:100dvh;overflow:hidden;padding-top:12px;padding-bottom:8px;-webkit-user-select:none;user-select:none}
 :root{--ctrl-size:14px;--pill-min-w:96px}
 #controls{margin:18px 0 12px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;justify-items:center}
 input[type=range]{width:100%;max-width:400px}
@@ -7,10 +7,13 @@ input[type=range]{width:100%;max-width:400px}
 #clock{aspect-ratio:1/1;touch-action:none;cursor:pointer}
 #gate{display:none}
 #gate button{padding:14px 18px;font-size:18px;font-weight:800;border:0;border-radius:16px;background:#007aff;color:#fff}
-#actions{visibility:hidden;margin:10px 0 12px}
+#actions{visibility:hidden;margin:10px 0 12px;display:flex;gap:12px}
 #actions.visible{visibility:visible}
 #actions button{padding:10px 14px;font-size:16px;font-weight:700;border:0;border-radius:12px;background:#0a84ff;color:#fff}
-#confettiLayer{position:fixed;inset:0;pointer-events:none;overflow:visible}
+#actions button.outline{background:#fff;color:#0a84ff;border:2px solid #0a84ff}
+#confettiLayer{position:fixed;inset:0;pointer-events:none;overflow:visible;z-index:10}
 .confetti{position:fixed;width:8px;height:8px;border-radius:2px;opacity:1;will-change:transform,opacity}
 .confetti.move{transition:transform 1200ms ease-out, opacity 1200ms ease-out}
+@keyframes floatUpFade{from{transform:translate(-50%,-50%);opacity:1}to{transform:translate(-50%,-150%);opacity:0}}
+.remainEffect{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font-weight:700;color:#0a84ff;pointer-events:none;animation:floatUpFade 1.2s ease-out forwards;z-index:5}
 
