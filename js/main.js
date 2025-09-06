@@ -75,7 +75,9 @@ function speakOrBeep(msg){
       u.lang='ja-JP'; if(jaVoice) u.voice=jaVoice;
       u.pitch=1.0; u.rate=0.9;
       speechSynthesis.cancel();
-      speechSynthesis.speak(u);
+      // Safari のキャンセル直後に発話が消える問題への対策。
+      // 過度な待機を避けつつも安全な最小遅延で再生を開始する。
+      setTimeout(()=>speechSynthesis.speak(u),20);
     }catch(e){ beep(); }
   }else{
     beep();
@@ -86,6 +88,15 @@ function speakOrBeep(msg){
 function unlock(){
   audioUnlocked=true;
   ensureAudioCtx();
+  if('speechSynthesis' in window){
+    try{
+      // 初回に音声リストを取得しておき、発話開始までの遅延を抑える
+      speechSynthesis.cancel();
+      speechSynthesis.getVoices();
+      pickJaVoice();
+      speechSynthesis.onvoiceschanged = pickJaVoice;
+    }catch(_){/* noop */}
+  }
   gate.style.display='none';
   // ベースラインやスケジュールは initBaseline/reset が担当
 }
@@ -240,6 +251,7 @@ function resetToInitial(){
   // ボタンを隠す（レイアウトは固定）
   const actions=document.getElementById('actions');
   if(actions) actions.classList.remove('visible');
+  refreshLoop();
 }
 nextBtn.onclick=resetToInitial;
 
@@ -345,7 +357,7 @@ function commitTimer(){
   speakOrBeep(`タイマースタート。${endH}時${endM}分まであと${rMin}分${rSec}秒です`);
   const actions=document.getElementById('actions');
   if(actions) actions.classList.add('visible');
-  drawClock();
+  refreshLoop();
 }
 function onPointerDown(e){
   ensureAudioUnlocked();
@@ -377,6 +389,7 @@ function tick(){
       speakOrBeep(`はい、終わりです。${h}時${m}分になりました`);
       if(!overrunStart) overrunStart=now;
       if(nNextAnnounce) nNextAnnounce = addMinutes(endDate, N);
+      refreshLoop();
       return;
     }
 
@@ -645,7 +658,7 @@ function drawClock(){
     }else{
       hand(R*0.78,10,aMin,mnColor);
     }
-  hand(R,5,aSec,'#d11');
+  hand(R-10,5,aSec,'#d11');
 
   // 6. 中心
   ctx.beginPath(); ctx.arc(0,0,8,0,2*Math.PI);
@@ -657,18 +670,33 @@ function drawClock(){
 
 // ====== 更新ループ ======
 function update(){ drawClock(); tick(); }
-let loopHandle;
-function setLoop(active){
-  if(active){
-    if(!loopHandle){
-      update();
-      loopHandle=setInterval(update,1000);
-    }
-  }else if(loopHandle){
-    clearInterval(loopHandle);
+let loopHandle=null;
+let slowMode=false; // true: 1秒ごと, false: rAF
+function cancelLoop(){
+  if(loopHandle!==null){
+    if(slowMode) clearTimeout(loopHandle);
+    else cancelAnimationFrame(loopHandle);
     loopHandle=null;
   }
 }
-setLoop(true);
-document.addEventListener('visibilitychange', ()=>setLoop(!document.hidden));
+function scheduleLoop(){
+  if(document.hidden) return;
+  slowMode = timerSet && !endAnnounced;
+  if(slowMode){
+    const delay = 1000 - (Date.now() % 1000);
+    loopHandle = setTimeout(()=>{ loopHandle=null; update(); scheduleLoop(); }, delay);
+  }else{
+    loopHandle = requestAnimationFrame(()=>{ loopHandle=null; update(); scheduleLoop(); });
+  }
+}
+function refreshLoop(){ cancelLoop(); update(); scheduleLoop(); }
+document.addEventListener('visibilitychange', ()=>{
+  if(document.hidden){
+    if('speechSynthesis' in window) speechSynthesis.cancel();
+    cancelLoop();
+  }else{
+    refreshLoop();
+  }
+});
+refreshLoop();
 
