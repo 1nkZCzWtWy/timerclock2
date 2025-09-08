@@ -626,7 +626,7 @@ function drawClock(){
     }else{
       hand(R*0.78,10,aMin,mnColor);
     }
-  hand(R-10,5,aSec,'#d11');
+  hand(R,5,aSec,'#d11');
 
   // 6. 中心
   ctx.beginPath(); ctx.arc(0,0,8,0,2*Math.PI);
@@ -639,29 +639,17 @@ function drawClock(){
 // ====== 更新ループ ======
 function update(){ drawClock(); tick(); }
 let loopHandle;
-function scheduleNext(){
-  const delay = 1000 - (Date.now() % 1000);
-  loopHandle = setTimeout(()=>{
-    update();
-    scheduleNext();
-  }, delay);
-}
 function setLoop(active){
   if(active){
     if(!loopHandle){
       update();
-      scheduleNext();
+      loopHandle=setInterval(update,1000);
     }
   }else if(loopHandle){
-    clearTimeout(loopHandle);
+    clearInterval(loopHandle);
     loopHandle=null;
   }
 }
 setLoop(true);
-document.addEventListener('visibilitychange', ()=>{
-  if(document.hidden){
-    if('speechSynthesis' in window) speechSynthesis.cancel();
-  }
-  setLoop(!document.hidden);
-});
+document.addEventListener('visibilitychange', ()=>setLoop(!document.hidden));
 
