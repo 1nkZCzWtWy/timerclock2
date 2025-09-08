@@ -139,6 +139,11 @@ function init(){
   if(nextBtn) nextBtn.addEventListener('click', onNext);
   if(resetBtn) resetBtn.addEventListener('click', resetState);
   if(range) range.addEventListener('input', onRangeInput);
+  if(clock){
+    clock.addEventListener('pointerdown', onPointerDown, {passive:false});
+    clock.addEventListener('pointermove', onPointerMove, {passive:false});
+    clock.addEventListener('pointerup', onPointerUp, {passive:false});
+  }
   initBaseline();
   resizeCanvas();
   startLoop();
@@ -355,9 +360,6 @@ function onPointerDown(e){
 }
 function onPointerMove(e){ if(dragging && !timerLocked){ updateDrag(e); e.preventDefault(); } }
 function onPointerUp(e){ if(!dragging||timerLocked) return; commitTimer(); try{clock.releasePointerCapture(e.pointerId);}catch(_){/* noop */} e.preventDefault(); }
-clock.addEventListener('pointerdown', onPointerDown, {passive:false});
-clock.addEventListener('pointermove', onPointerMove, {passive:false});
-clock.addEventListener('pointerup', onPointerUp, {passive:false});
 
 // ====== 経過チェック ======
 function tick(){
