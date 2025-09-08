@@ -1,14 +1,15 @@
-body{margin:0;font-family:system-ui,-apple-system;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f6f7f9;height:100dvh;overflow:hidden;padding-top:12px;padding-bottom:8px;-webkit-user-select:none;user-select:none}
+body{margin:0;font-family:system-ui,-apple-system;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f6f7f9;min-height:100dvh;overflow-x:hidden;overflow-y:auto;padding-top:12px;padding-bottom:8px;-webkit-user-select:none;user-select:none}
 :root{--ctrl-size:14px;--pill-min-w:96px;--actions-h:0}
-#controls{margin:18px 0 12px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;justify-items:center}
+#controls{margin:10px 0 12px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;justify-items:center}
 input[type=range]{width:100%;max-width:400px}
 .pill{background:#eef2ff;padding:6px 12px;border-radius:999px;font-weight:700;font-size:var(--ctrl-size);min-width:var(--pill-min-w);display:inline-flex;align-items:center;justify-content:center}
 .ctrlText{font-size:var(--ctrl-size)}
 #clock{aspect-ratio:1/1;touch-action:none;cursor:pointer}
 #gate{display:none}
 #gate button{padding:14px 18px;font-size:18px;font-weight:800;border:0;border-radius:16px;background:#007aff;color:#fff}
-#actionsSpace{margin:10px 0 12px;height:var(--actions-h)}
-#actions{display:none;gap:12px}
+#actionsSpace{margin:18px 0 12px;height:var(--actions-h);display:flex;justify-content:center;align-items:center;text-align:center}
+#actions{display:none;gap:12px;justify-content:center}
+#preMsg{display:block;font-size:16px;font-weight:700}
 #actions button{padding:10px 14px;font-size:16px;font-weight:700;border:0;border-radius:12px;background:#0a84ff;color:#fff}
 #actions button.outline{background:#fff;color:#0a84ff;border:2px solid #0a84ff}
 #confettiLayer{position:fixed;inset:0;pointer-events:none;overflow:visible;z-index:10}

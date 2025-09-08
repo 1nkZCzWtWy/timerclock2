@@ -21,6 +21,7 @@ const gateBtn=$('gateBtn');
 const nextBtn=$('nextBtn');
 const resetBtn=$('resetBtn');
 const actions=$('actions');
+const preMsg=$('preMsg');
 
 // Capture action area height once and expose via CSS variable
 const ACTIONS_H = (()=>{
@@ -28,9 +29,11 @@ const ACTIONS_H = (()=>{
   const holder = actions.parentElement;
   const prevHolderH = holder.style.height;
   holder.style.height='auto';
+  if(preMsg) preMsg.style.display='none';
   actions.style.display='flex';
   const h = actions.offsetHeight;
   actions.style.display='none';
+  if(preMsg) preMsg.style.display='';
   holder.style.height=prevHolderH;
   document.documentElement.style.setProperty('--actions-h', h+'px');
   return h;
@@ -170,16 +173,12 @@ function confettiBurst(){
   }
   // layer自体は維持（使い回し）
 }
-function showRemainTime(ms){  
-  // ms から残り分を算出し、画面表示と音声通知を行う
-const seconds = Math.max(0, Math.ceil(ms / 1000));
-const minutes = Math.floor(seconds / 60);
-const text = `${minutes}分`;
+function showRemainTime(ms){
+  // ms から残り分を算出し、画面中央に表示する
+  const seconds = Math.max(0, Math.ceil(ms / 1000));
+  const minutes = Math.floor(seconds / 60);
+  const text = `${minutes}分`;
 
-speakOrBeep(text);  // 発声またはビープ音
-
-// 画面中央に残り分を表示
-  
   const el = document.createElement('div');
   el.className = 'remainEffect';
   el.textContent = text;
@@ -206,16 +205,20 @@ function resetState(){
   startHour=(startTime.getHours()%12)+startMin/60;
   scheduleNextNFrom(startTime);
   if(actions) actions.style.display='none';
+  if(preMsg) preMsg.style.display='block';
+  if(nextBtn) nextBtn.disabled=false;
   resizeCanvas();
 }
 
 function onNext(){
+  if(nextBtn) nextBtn.disabled=true;
   const now = new Date();
   if (timerSet && endDate && now < endDate) {
     showRemainTime(endDate - now);
-    return;
+  } else {
+    confettiBurst();
   }
-  confettiBurst();
+  setTimeout(resetState,1300);
 }
 
 function onResetAlarm(){
@@ -230,10 +233,12 @@ function updateSoundUI(){
   if(nUnit) nUnit.textContent = (N<=0)? '' : '分ごと';
   if(soundIcon) soundIcon.textContent = (N<=0)? '🔈' : '🔊';
 }
+// アナウンス間隔スライダー: 目盛りは参照用とし、1分単位で調整可能
 range.oninput=e=>{
-  const v=parseInt(e.target.value,10);
-  N = isNaN(v)?0:v;
-  nVal.textContent = (N<=0)? 'なし' : N;
+  let v=parseInt(e.target.value,10);
+  if(isNaN(v)) v=0;
+  N=v;
+  nVal.textContent=(N<=0)?'なし':N;
   updateSoundUI();
   if(started){
     startTime=new Date();
@@ -326,6 +331,7 @@ function commitTimer(){
   const endM = endDate.getMinutes();
   speakOrBeep(`タイマースタート。${endH}時${endM}分まであと${rMin}分${rSec}秒です`);
   if(actions) actions.style.display='flex';
+  if(preMsg) preMsg.style.display='none';
   resizeCanvas();
   drawClock();
 }
@@ -639,19 +645,33 @@ function drawClock(){
 }
 
 // ====== 更新ループ ======
-function update(){ drawClock(); tick(); }
+function isPulsing(){ return !timerSet || (endAnnounced && overrunStart); }
+let fps = isPulsing() ? 60 : 1;
+function update(){ drawClock(); tick(); adjustLoop(); }
 let loopHandle;
-function setLoop(active){
-  if(active){
-    if(!loopHandle){
-      update();
-      loopHandle=setInterval(update,1000);
-    }
-  }else if(loopHandle){
+function startLoop(){
+  if(!loopHandle){
+    update();
+    loopHandle=setInterval(update,1000/fps);
+  }
+}
+function stopLoop(){
+  if(loopHandle){
     clearInterval(loopHandle);
     loopHandle=null;
   }
 }
-setLoop(true);
+function adjustLoop(){
+  const desired = isPulsing() ? 60 : 1;
+  if(desired !== fps){
+    fps = desired;
+    if(loopHandle){
+      clearInterval(loopHandle);
+      loopHandle=setInterval(update,1000/fps);
+    }
+  }
+}
+function setLoop(active){ active ? startLoop() : stopLoop(); }
+startLoop();
 document.addEventListener('visibilitychange', ()=>setLoop(!document.hidden));
 
