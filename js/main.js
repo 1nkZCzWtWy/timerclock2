@@ -90,6 +90,11 @@ function speakOrBeep(msg){
   }
 }
 
+// m===0 のときは「○時ちょうど」とする
+function formatTime(h,m){
+  return (m===0)? `${h}時ちょうど` : `${h}時${m}分`;
+}
+
 // ====== タップで開始 ======
 function unlock(){
   audioUnlocked=true;
@@ -245,7 +250,7 @@ function onResetAlarm(){
 
 // ====== Nを変更したらリスタート ======
 function updateSoundUI(){
-  if(nUnit) nUnit.textContent = (N<=0)? '' : '分';
+  if(nUnit) nUnit.textContent = (N<=0)? '' : '分ごと';
   if(soundIcon) soundIcon.textContent = (N<=0)? '🔈' : '🔊';
 }
 // アナウンス間隔スライダー: 目盛りは参照用とし、1分単位で調整可能
@@ -345,7 +350,8 @@ function commitTimer(){
   const endH24 = endDate.getHours();
   const endH = (endH24%12)||12;
   const endM = endDate.getMinutes();
-  speakOrBeep(`タイマースタート。${endH}時${endM}分まであと${rMin}分${rSec}秒です`);
+  const timeStr = formatTime(endH,endM);
+  speakOrBeep(`タイマースタート。${timeStr}まであと${rMin}分${rSec}秒です`);
   if(actions) actions.style.display='flex';
   if(preMsg) preMsg.style.display='none';
   resizeCanvas();
@@ -375,7 +381,7 @@ function tick(){
       endAnnounced=true;
       const h=((endDate.getHours()%12)||12);
       const m=endDate.getMinutes();
-      speakOrBeep(`はい、終わりです。${h}時${m}分になりました`);
+      speakOrBeep(`はい、終わりです。${formatTime(h,m)}になりました`);
       if(!overrunStart) overrunStart=now;
       if(nNextAnnounce) nNextAnnounce = addMinutes(endDate, N);
       return;
@@ -402,7 +408,7 @@ function tick(){
         const h=((endDate.getHours()%12)||12);
         const m=endDate.getMinutes();
         const overMin = Math.max(0, Math.floor((minuteStartTs - endDate.getTime())/60000));
-        msg = `${h}時${m}分からもう${overMin}分がすぎています`;
+        msg = `${formatTime(h,m)}からもう${overMin}分がすぎています`;
       }else{
         if(timerSet && endDate){
           const diffMs=endDate.getTime() - minuteStartTs;
@@ -451,11 +457,14 @@ function resizeCanvas(){
   else ctx.setTransform(1,0,0,1,0,0);
   ctx.scale(dpr,dpr);
 
-  // update control text sizing to ~2/3 of numeral size
+  // update control/preMsg text sizing relative to numeral size
   const R = Math.min(rect.width, rect.height) / 2 - 16;
-  const ctrlPx = Math.max(12, Math.round(R*0.14*2/3));
+  const numeralPx = Math.round(R*0.14);
+  const ctrlPx = Math.max(12, Math.round(numeralPx*2/3));
+  const preMsgPx = Math.max(12, Math.round(numeralPx*0.5));
   document.documentElement.style.setProperty('--ctrl-size', ctrlPx+'px');
   document.documentElement.style.setProperty('--pill-min-w', Math.round(ctrlPx*5.6)+'px');
+  document.documentElement.style.setProperty('--pre-msg-size', preMsgPx+'px');
   // center controls to same width as clock
   const controlsEl = document.getElementById('controls');
   if(controlsEl){ controlsEl.style.width = rect.width + 'px'; }
