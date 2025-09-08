@@ -20,6 +20,21 @@ const gate=$('gate');
 const gateBtn=$('gateBtn');
 const nextBtn=$('nextBtn');
 const resetBtn=$('resetBtn');
+const actions=$('actions');
+
+// Capture action area height once and expose via CSS variable
+const ACTIONS_H = (()=>{
+  if(!actions) return 0;
+  const holder = actions.parentElement;
+  const prevHolderH = holder.style.height;
+  holder.style.height='auto';
+  actions.style.display='flex';
+  const h = actions.offsetHeight;
+  actions.style.display='none';
+  holder.style.height=prevHolderH;
+  document.documentElement.style.setProperty('--actions-h', h+'px');
+  return h;
+})();
 
 // ====== 分針ドラッグ用の状態 ======
 let dragging=false;       // ドラッグ中か
@@ -189,8 +204,8 @@ function resetState(){
   startMin=startTime.getMinutes()+startSec/60;
   startHour=(startTime.getHours()%12)+startMin/60;
   scheduleNextNFrom(startTime);
-  const actions=document.getElementById('actions');
-  if(actions) actions.classList.remove('visible');
+  if(actions) actions.style.display='none';
+  resizeCanvas();
 }
 
 function onNext(){
@@ -308,8 +323,8 @@ function commitTimer(){
   const endH = (endH24%12)||12;
   const endM = endDate.getMinutes();
   speakOrBeep(`タイマースタート。${endH}時${endM}分まであと${rMin}分${rSec}秒です`);
-  const actions=document.getElementById('actions');
-  if(actions) actions.classList.add('visible');
+  if(actions) actions.style.display='flex';
+  resizeCanvas();
   drawClock();
 }
 function onPointerDown(e){
@@ -397,9 +412,8 @@ function tick(){
 function resizeCanvas(){
   const margin = 12;
   const controls = document.getElementById('controls');
-  const actions = document.getElementById('actions');
   const availW = Math.max(100, window.innerWidth - margin*2);
-  const availH = Math.max(100, window.innerHeight - (controls?controls.offsetHeight:0) - (actions?actions.offsetHeight:0) - margin*2);
+  const availH = Math.max(100, window.innerHeight - (controls?controls.offsetHeight:0) - ACTIONS_H - margin*2);
   const size = Math.floor(Math.min(availW, availH));
 
   // apply CSS size
@@ -424,6 +438,8 @@ function resizeCanvas(){
   // center controls to same width as clock
   const controlsEl = document.getElementById('controls');
   if(controlsEl){ controlsEl.style.width = rect.width + 'px'; }
+  const actionsSpaceEl = document.getElementById('actionsSpace');
+  if(actionsSpaceEl){ actionsSpaceEl.style.width = rect.width + 'px'; }
 }
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
