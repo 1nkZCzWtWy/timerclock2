@@ -10,34 +10,23 @@ function ensureAudioCtx(){
 }
 
 const $=id=>document.getElementById(id);
-const clock=$('clock');
-const ctx=clock.getContext('2d');
-const range=$('range');
-const nVal=$('nVal');
-const nUnit=$('nUnit');
-const soundIcon=$('soundIcon');
-const gate=$('gate');
-const gateBtn=$('gateBtn');
-const nextBtn=$('nextBtn');
-const resetBtn=$('resetBtn');
-const actions=$('actions');
-const preMsg=$('preMsg');
+let clock, ctx, range, nVal, nUnit, soundIcon, gate, gateBtn, nextBtn, resetBtn, actions, preMsg;
+let ACTIONS_H=0;
 
-// Capture action area height once and expose via CSS variable
-const ACTIONS_H = (()=>{
+function computeActionsHeight(){
   if(!actions) return 0;
-  const holder = actions.parentElement;
-  const prevHolderH = holder.style.height;
+  const holder=actions.parentElement;
+  const prevHolderH=holder.style.height;
   holder.style.height='auto';
   if(preMsg) preMsg.style.display='none';
   actions.style.display='flex';
-  const h = actions.offsetHeight;
+  const h=actions.offsetHeight;
   actions.style.display='none';
   if(preMsg) preMsg.style.display='';
   holder.style.height=prevHolderH;
   document.documentElement.style.setProperty('--actions-h', h+'px');
   return h;
-})();
+}
 
 // ====== 分針ドラッグ用の状態 ======
 let dragging=false;       // ドラッグ中か
@@ -108,7 +97,6 @@ function unlock(){
   gate.style.display='none';
   // ベースラインやスケジュールは initBaseline/reset が担当
 }
-gateBtn.onclick=unlock;
 
 // 初期シャドウ基準とN分スケジュールをセット（音のアンロックはしない）
 function initBaseline(){
@@ -123,8 +111,7 @@ function initBaseline(){
     const v=parseInt(range.value,10);
     if(!isNaN(v)) N=v;
     nVal.textContent = (N<=0)? 'なし' : N;
-    if(nUnit) nUnit.textContent = (N<=0)? '' : '分ごと';
-    if(soundIcon) soundIcon.textContent = (N<=0)? '🔈' : '🔊';
+    updateSoundUI();
   }
 }
 
@@ -134,7 +121,32 @@ function ensureAudioUnlocked(){
   unlock();
 }
 
-initBaseline();
+function init(){
+  clock=$('clock');
+  ctx=clock.getContext('2d');
+  range=$('range');
+  nVal=$('nVal');
+  nUnit=$('nUnit');
+  soundIcon=$('soundIcon');
+  gate=$('gate');
+  gateBtn=$('gateBtn');
+  nextBtn=$('nextBtn');
+  resetBtn=$('resetBtn');
+  actions=$('actions');
+  preMsg=$('preMsg');
+  ACTIONS_H=computeActionsHeight();
+  if(gateBtn) gateBtn.addEventListener('click', unlock);
+  if(nextBtn) nextBtn.addEventListener('click', onNext);
+  if(resetBtn) resetBtn.addEventListener('click', resetState);
+  if(range) range.addEventListener('input', onRangeInput);
+  initBaseline();
+  resizeCanvas();
+  startLoop();
+  document.addEventListener('visibilitychange', ()=>setLoop(!document.hidden));
+  window.addEventListener('resize', resizeCanvas);
+}
+document.addEventListener('DOMContentLoaded', init);
+
 
 // 初期状態に戻す
 // ちょっとしたお楽しみ: 端からのコンフェッティ
@@ -219,21 +231,20 @@ function onNext(){
     confettiBurst();
   }
   setTimeout(resetState,1300);
+}
 
 function onResetAlarm(){
   resetState();
 }
 
-nextBtn.onclick=onNext;
-if(resetBtn) resetBtn.onclick=resetState;
 
 // ====== Nを変更したらリスタート ======
 function updateSoundUI(){
-  if(nUnit) nUnit.textContent = (N<=0)? '' : '分ごと';
+  if(nUnit) nUnit.textContent = (N<=0)? '' : '分';
   if(soundIcon) soundIcon.textContent = (N<=0)? '🔈' : '🔊';
 }
 // アナウンス間隔スライダー: 目盛りは参照用とし、1分単位で調整可能
-range.oninput=e=>{
+function onRangeInput(e){
   let v=parseInt(e.target.value,10);
   if(isNaN(v)) v=0;
   N=v;
@@ -246,7 +257,7 @@ range.oninput=e=>{
     // 影はリセットしない
     scheduleNextNFrom(startTime);
   }
-};
+}
 
 // ====== 角度/分変換ユーティリティ ======
 const TAU=2*Math.PI;
@@ -449,8 +460,6 @@ function resizeCanvas(){
   const actionsSpaceEl = document.getElementById('actionsSpace');
   if(actionsSpaceEl){ actionsSpaceEl.style.width = rect.width + 'px'; }
 }
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
 
 // ====== 時計描画 ======
 function drawClock(){
@@ -672,6 +681,4 @@ function adjustLoop(){
   }
 }
 function setLoop(active){ active ? startLoop() : stopLoop(); }
-startLoop();
-document.addEventListener('visibilitychange', ()=>setLoop(!document.hidden));
 
