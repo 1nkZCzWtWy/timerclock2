@@ -21,6 +21,7 @@ const gateBtn=$('gateBtn');
 const nextBtn=$('nextBtn');
 const resetBtn=$('resetBtn');
 const actions=$('actions');
+const preMsg=$('preMsg');
 
 // Capture action area height once and expose via CSS variable
 const ACTIONS_H = (()=>{
@@ -28,9 +29,11 @@ const ACTIONS_H = (()=>{
   const holder = actions.parentElement;
   const prevHolderH = holder.style.height;
   holder.style.height='auto';
+  if(preMsg) preMsg.style.display='none';
   actions.style.display='flex';
   const h = actions.offsetHeight;
   actions.style.display='none';
+  if(preMsg) preMsg.style.display='';
   holder.style.height=prevHolderH;
   document.documentElement.style.setProperty('--actions-h', h+'px');
   return h;
@@ -206,6 +209,7 @@ function resetState(){
   startHour=(startTime.getHours()%12)+startMin/60;
   scheduleNextNFrom(startTime);
   if(actions) actions.style.display='none';
+  if(preMsg) preMsg.style.display='block';
   resizeCanvas();
 }
 
@@ -216,6 +220,7 @@ function onNext(){
     return;
   }
   confettiBurst();
+  resetState();
 }
 
 function onResetAlarm(){
@@ -230,10 +235,17 @@ function updateSoundUI(){
   if(nUnit) nUnit.textContent = (N<=0)? '' : '分ごと';
   if(soundIcon) soundIcon.textContent = (N<=0)? '🔈' : '🔊';
 }
+const announceMarks=[0,1,5,10,15,30];
 range.oninput=e=>{
-  const v=parseInt(e.target.value,10);
-  N = isNaN(v)?0:v;
-  nVal.textContent = (N<=0)? 'なし' : N;
+  let v=parseInt(e.target.value,10);
+  if(isNaN(v)) v=0;
+  let nearest=announceMarks[0];
+  for(const m of announceMarks){
+    if(Math.abs(m-v) < Math.abs(nearest-v)) nearest=m;
+  }
+  e.target.value=nearest;
+  N=nearest;
+  nVal.textContent=(N<=0)?'なし':N;
   updateSoundUI();
   if(started){
     startTime=new Date();
@@ -326,6 +338,7 @@ function commitTimer(){
   const endM = endDate.getMinutes();
   speakOrBeep(`タイマースタート。${endH}時${endM}分まであと${rMin}分${rSec}秒です`);
   if(actions) actions.style.display='flex';
+  if(preMsg) preMsg.style.display='none';
   resizeCanvas();
   drawClock();
 }
