@@ -248,6 +248,7 @@ function onRangeInput(e){
   let v=parseInt(e.target.value,10);
   if(isNaN(v)) v=0;
   N=v;
+
   nVal.textContent=(N<=0)?'なし':N;
   updateSoundUI();
   if(started){
