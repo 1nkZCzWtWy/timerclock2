@@ -170,10 +170,16 @@ function confettiBurst(){
   }
   // layer自体は維持（使い回し）
 }
-function showRemainTime(ms){
-  const sec = Math.ceil(ms / 1000);
-  const m = Math.floor(sec / 60);
-  const text = `${m}分`;
+function showRemainTime(ms){  
+  // ms から残り分を算出し、画面表示と音声通知を行う
+const seconds = Math.max(0, Math.ceil(ms / 1000));
+const minutes = Math.floor(seconds / 60);
+const text = `${minutes}分`;
+
+speakOrBeep(text);  // 発声またはビープ音
+
+// 画面中央に残り分を表示
+  
   const el = document.createElement('div');
   el.className = 'remainEffect';
   el.textContent = text;
@@ -204,12 +210,12 @@ function resetState(){
 }
 
 function onNext(){
-  const now=new Date();
-  if(timerSet && endDate && now < endDate){
+  const now = new Date();
+  if (timerSet && endDate && now < endDate) {
     showRemainTime(endDate - now);
-  }else{
-    confettiBurst();
+    return;
   }
+  confettiBurst();
 }
 
 function onResetAlarm(){
@@ -217,7 +223,7 @@ function onResetAlarm(){
 }
 
 nextBtn.onclick=onNext;
-if(resetBtn) resetBtn.onclick=onResetAlarm;
+if(resetBtn) resetBtn.onclick=resetState;
 
 // ====== Nを変更したらリスタート ======
 function updateSoundUI(){
