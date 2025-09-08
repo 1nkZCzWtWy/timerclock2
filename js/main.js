@@ -3,18 +3,9 @@ let started=false, startTime=null, startSec=0, startHour=null, startMin=null;
 let audioUnlocked=false, jaVoice=null, audioCtx=null;
 
 function ensureAudioCtx(){
-  if(audioCtx) return true;
-  try{
-    const Ctx=window.AudioContext||window.webkitAudioContext;
-    if(!Ctx) throw new Error('unsupported');
-    audioCtx=new Ctx();
-    if(audioCtx.state==='suspended' && typeof audioCtx.resume==='function'){
-      audioCtx.resume().catch(()=>{});
-    }
-    return true;
-  }catch(e){
-    audioCtx=null;
-    return false;
+  if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended' && typeof audioCtx.resume==='function'){
+    audioCtx.resume().catch(()=>{});
   }
 }
 
@@ -29,10 +20,6 @@ const gate=$('gate');
 const gateBtn=$('gateBtn');
 const nextBtn=$('nextBtn');
 const resetBtn=$('resetBtn');
-
-// Show gate only when audio APIs exist and are still locked
-const hasAudioApi = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext);
-if(gate && hasAudioApi && !audioUnlocked){ gate.style.display='flex'; }
 
 // ====== 分針ドラッグ用の状態 ======
 let dragging=false;       // ドラッグ中か
@@ -99,9 +86,7 @@ function speakOrBeep(msg){
 // ====== タップで開始 ======
 function unlock(){
   audioUnlocked=true;
-  if(!ensureAudioCtx()){
-    audioUnlocked=false;
-  }
+  ensureAudioCtx();
   gate.style.display='none';
   // ベースラインやスケジュールは initBaseline/reset が担当
 }
@@ -171,19 +156,25 @@ function confettiBurst(){
   // layer自体は維持（使い回し）
 }
 function showRemainTime(ms){
-  const sec = Math.ceil(ms / 1000);
-  const m = Math.floor(sec / 60);
-  const text = `${m}分`;
-  const el = document.createElement('div');
-  el.className = 'remainEffect';
-  el.textContent = text;
-  if (clock) {
-    const rect = clock.getBoundingClientRect();
-    const fontSize = rect.width / Math.max(1, text.length);
-    el.style.fontSize = fontSize + 'px';
-  }
+  const sec=Math.ceil(ms/1000);
+  const m=Math.floor(sec/60);
+const sec = Math.ceil(ms / 1000);
+const m = Math.floor(sec / 60);
+const text = `${m}分`;
+const el = document.createElement('div');
+el.className = 'remainEffect';
+el.textContent = text;
+const clock = document.getElementById('clock');
+if (clock) {
+  const rect = clock.getBoundingClientRect();
+  const fontSize = rect.width / Math.max(1, text.length);
+  el.style.fontSize = fontSize + 'px';
+}
+document.body.appendChild(el);
+setTimeout(() => { el.remove(); }, 1300);
+
   document.body.appendChild(el);
-  setTimeout(() => { el.remove(); }, 1300);
+  setTimeout(()=>{el.remove();},1300);
 }
 
 function resetState(){
@@ -209,7 +200,6 @@ function onNext(){
   }else{
     confettiBurst();
   }
-}
 
 function onResetAlarm(){
   resetState();
@@ -322,10 +312,6 @@ function commitTimer(){
   if(actions) actions.classList.add('visible');
   drawClock();
 }
-function endDrag(e){
-  dragging=false; dragMinIdx=null;
-  try{ clock.releasePointerCapture(e.pointerId); }catch(_){/* noop */}
-}
 function onPointerDown(e){
   ensureAudioUnlocked();
   if(!started || timerLocked) return;
@@ -334,12 +320,10 @@ function onPointerDown(e){
   e.preventDefault();
 }
 function onPointerMove(e){ if(dragging && !timerLocked){ updateDrag(e); e.preventDefault(); } }
-function onPointerUp(e){ if(!dragging||timerLocked) return; commitTimer(); endDrag(e); e.preventDefault(); }
-function onPointerCancel(e){ if(!dragging) return; endDrag(e); }
+function onPointerUp(e){ if(!dragging||timerLocked) return; commitTimer(); try{clock.releasePointerCapture(e.pointerId);}catch(_){/* noop */} e.preventDefault(); }
 clock.addEventListener('pointerdown', onPointerDown, {passive:false});
 clock.addEventListener('pointermove', onPointerMove, {passive:false});
 clock.addEventListener('pointerup', onPointerUp, {passive:false});
-clock.addEventListener('pointercancel', onPointerCancel, {passive:false});
 
 // ====== 経過チェック ======
 function tick(){
