@@ -8,6 +8,14 @@
 </head>
 <body>
 <div id="gate"><button id="gateBtn">タップで開始</button></div>
+<div id="actionsSpace">
+  <div id="preMsg">次に何をやるか決めてから、<br>タイマーをセットしよう</div>
+  <div id="actions">
+    <button id="resetBtn" class="outline">タイマー再設定</button>
+    <button id="nextBtn">終わった。次！</button>
+  </div>
+</div>
+<canvas id="clock" width="600" height="600"></canvas>
 <div id="controls">
   <span id="soundIcon" class="ctrlText">🔊</span>
   <input id="range" type="range" min="0" max="30" step="1" value="5" list="announceTicks">
@@ -21,14 +29,6 @@
   <option value="15" label="15"></option>
   <option value="30" label="30"></option>
 </datalist>
-<canvas id="clock" width="600" height="600"></canvas>
-<div id="actionsSpace">
-  <div id="preMsg">次に何をやるか決めてから、<br>タイマーをセットしよう</div>
-  <div id="actions">
-    <button id="resetBtn" class="outline">タイマー再設定</button>
-    <button id="nextBtn">終わった。次！</button>
-  </div>
-</div>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>

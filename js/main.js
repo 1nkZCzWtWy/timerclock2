@@ -173,16 +173,12 @@ function confettiBurst(){
   }
   // layer自体は維持（使い回し）
 }
-function showRemainTime(ms){  
-  // ms から残り分を算出し、画面表示と音声通知を行う
-const seconds = Math.max(0, Math.ceil(ms / 1000));
-const minutes = Math.floor(seconds / 60);
-const text = `${minutes}分`;
+function showRemainTime(ms){
+  // ms から残り分を算出し、画面中央に表示する
+  const seconds = Math.max(0, Math.ceil(ms / 1000));
+  const minutes = Math.floor(seconds / 60);
+  const text = `${minutes}分`;
 
-speakOrBeep(text);  // 発声またはビープ音
-
-// 画面中央に残り分を表示
-  
   const el = document.createElement('div');
   el.className = 'remainEffect';
   el.textContent = text;
@@ -210,18 +206,19 @@ function resetState(){
   scheduleNextNFrom(startTime);
   if(actions) actions.style.display='none';
   if(preMsg) preMsg.style.display='block';
+  if(nextBtn) nextBtn.disabled=false;
   resizeCanvas();
 }
 
 function onNext(){
+  if(nextBtn) nextBtn.disabled=true;
   const now = new Date();
   if (timerSet && endDate && now < endDate) {
     showRemainTime(endDate - now);
-    return;
+  } else {
+    confettiBurst();
   }
-  confettiBurst();
-  resetState();
-}
+  setTimeout(resetState,1300);
 
 function onResetAlarm(){
   resetState();
@@ -235,16 +232,12 @@ function updateSoundUI(){
   if(nUnit) nUnit.textContent = (N<=0)? '' : '分ごと';
   if(soundIcon) soundIcon.textContent = (N<=0)? '🔈' : '🔊';
 }
-const announceMarks=[0,1,5,10,15,30];
+// アナウンス間隔スライダー: 目盛りは参照用とし、1分単位で調整可能
 range.oninput=e=>{
   let v=parseInt(e.target.value,10);
   if(isNaN(v)) v=0;
-  let nearest=announceMarks[0];
-  for(const m of announceMarks){
-    if(Math.abs(m-v) < Math.abs(nearest-v)) nearest=m;
-  }
-  e.target.value=nearest;
-  N=nearest;
+  N=v;
+
   nVal.textContent=(N<=0)?'なし':N;
   updateSoundUI();
   if(started){
@@ -652,19 +645,33 @@ function drawClock(){
 }
 
 // ====== 更新ループ ======
-function update(){ drawClock(); tick(); }
+function isPulsing(){ return !timerSet || (endAnnounced && overrunStart); }
+let fps = isPulsing() ? 60 : 1;
+function update(){ drawClock(); tick(); adjustLoop(); }
 let loopHandle;
-function setLoop(active){
-  if(active){
-    if(!loopHandle){
-      update();
-      loopHandle=setInterval(update,1000);
-    }
-  }else if(loopHandle){
+function startLoop(){
+  if(!loopHandle){
+    update();
+    loopHandle=setInterval(update,1000/fps);
+  }
+}
+function stopLoop(){
+  if(loopHandle){
     clearInterval(loopHandle);
     loopHandle=null;
   }
 }
-setLoop(true);
+function adjustLoop(){
+  const desired = isPulsing() ? 60 : 1;
+  if(desired !== fps){
+    fps = desired;
+    if(loopHandle){
+      clearInterval(loopHandle);
+      loopHandle=setInterval(update,1000/fps);
+    }
+  }
+}
+function setLoop(active){ active ? startLoop() : stopLoop(); }
+startLoop();
 document.addEventListener('visibilitychange', ()=>setLoop(!document.hidden));
 
