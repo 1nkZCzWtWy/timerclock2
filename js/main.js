@@ -10,31 +10,23 @@ function ensureAudioCtx(){
 }
 
 const $=id=>document.getElementById(id);
-const clock=$('clock');
-const ctx=clock.getContext('2d');
-const range=$('range');
-const nVal=$('nVal');
-const nUnit=$('nUnit');
-const soundIcon=$('soundIcon');
-const gate=$('gate');
-const gateBtn=$('gateBtn');
-const nextBtn=$('nextBtn');
-const resetBtn=$('resetBtn');
-const actions=$('actions');
+let clock, ctx, range, nVal, nUnit, soundIcon, gate, gateBtn, nextBtn, resetBtn, actions, preMsg;
+let ACTIONS_H=0;
 
-// Capture action area height once and expose via CSS variable
-const ACTIONS_H = (()=>{
+function computeActionsHeight(){
   if(!actions) return 0;
-  const holder = actions.parentElement;
-  const prevHolderH = holder.style.height;
+  const holder=actions.parentElement;
+  const prevHolderH=holder.style.height;
   holder.style.height='auto';
+  if(preMsg) preMsg.style.display='none';
   actions.style.display='flex';
-  const h = actions.offsetHeight;
+  const h=actions.offsetHeight;
   actions.style.display='none';
+  if(preMsg) preMsg.style.display='';
   holder.style.height=prevHolderH;
   document.documentElement.style.setProperty('--actions-h', h+'px');
   return h;
-})();
+}
 
 // ====== 分針ドラッグ用の状態 ======
 let dragging=false;       // ドラッグ中か
@@ -105,7 +97,6 @@ function unlock(){
   gate.style.display='none';
   // ベースラインやスケジュールは initBaseline/reset が担当
 }
-gateBtn.onclick=unlock;
 
 // 初期シャドウ基準とN分スケジュールをセット（音のアンロックはしない）
 function initBaseline(){
@@ -120,8 +111,7 @@ function initBaseline(){
     const v=parseInt(range.value,10);
     if(!isNaN(v)) N=v;
     nVal.textContent = (N<=0)? 'なし' : N;
-    if(nUnit) nUnit.textContent = (N<=0)? '' : '分ごと';
-    if(soundIcon) soundIcon.textContent = (N<=0)? '🔈' : '🔊';
+    updateSoundUI();
   }
 }
 
@@ -131,7 +121,32 @@ function ensureAudioUnlocked(){
   unlock();
 }
 
-initBaseline();
+function init(){
+  clock=$('clock');
+  ctx=clock.getContext('2d');
+  range=$('range');
+  nVal=$('nVal');
+  nUnit=$('nUnit');
+  soundIcon=$('soundIcon');
+  gate=$('gate');
+  gateBtn=$('gateBtn');
+  nextBtn=$('nextBtn');
+  resetBtn=$('resetBtn');
+  actions=$('actions');
+  preMsg=$('preMsg');
+  ACTIONS_H=computeActionsHeight();
+  if(gateBtn) gateBtn.addEventListener('click', unlock);
+  if(nextBtn) nextBtn.addEventListener('click', onNext);
+  if(resetBtn) resetBtn.addEventListener('click', resetState);
+  if(range) range.addEventListener('input', onRangeInput);
+  initBaseline();
+  resizeCanvas();
+  startLoop();
+  document.addEventListener('visibilitychange', ()=>setLoop(!document.hidden));
+  window.addEventListener('resize', resizeCanvas);
+}
+document.addEventListener('DOMContentLoaded', init);
+
 
 // 初期状態に戻す
 // ちょっとしたお楽しみ: 端からのコンフェッティ
@@ -170,16 +185,12 @@ function confettiBurst(){
   }
   // layer自体は維持（使い回し）
 }
-function showRemainTime(ms){  
-  // ms から残り分を算出し、画面表示と音声通知を行う
-const seconds = Math.max(0, Math.ceil(ms / 1000));
-const minutes = Math.floor(seconds / 60);
-const text = `${minutes}分`;
+function showRemainTime(ms){
+  // ms から残り分を算出し、画面中央に表示する
+  const seconds = Math.max(0, Math.ceil(ms / 1000));
+  const minutes = Math.floor(seconds / 60);
+  const text = `${minutes}分`;
 
-speakOrBeep(text);  // 発声またはビープ音
-
-// 画面中央に残り分を表示
-  
   const el = document.createElement('div');
   el.className = 'remainEffect';
   el.textContent = text;
@@ -206,34 +217,38 @@ function resetState(){
   startHour=(startTime.getHours()%12)+startMin/60;
   scheduleNextNFrom(startTime);
   if(actions) actions.style.display='none';
+  if(preMsg) preMsg.style.display='block';
+  if(nextBtn) nextBtn.disabled=false;
   resizeCanvas();
 }
 
 function onNext(){
+  if(nextBtn) nextBtn.disabled=true;
   const now = new Date();
   if (timerSet && endDate && now < endDate) {
     showRemainTime(endDate - now);
-    return;
+  } else {
+    confettiBurst();
   }
-  confettiBurst();
+  setTimeout(resetState,1300);
 }
 
 function onResetAlarm(){
   resetState();
 }
 
-nextBtn.onclick=onNext;
-if(resetBtn) resetBtn.onclick=resetState;
 
 // ====== Nを変更したらリスタート ======
 function updateSoundUI(){
-  if(nUnit) nUnit.textContent = (N<=0)? '' : '分ごと';
+  if(nUnit) nUnit.textContent = (N<=0)? '' : '分';
   if(soundIcon) soundIcon.textContent = (N<=0)? '🔈' : '🔊';
 }
-range.oninput=e=>{
-  const v=parseInt(e.target.value,10);
-  N = isNaN(v)?0:v;
-  nVal.textContent = (N<=0)? 'なし' : N;
+// アナウンス間隔スライダー: 目盛りは参照用とし、1分単位で調整可能
+function onRangeInput(e){
+  let v=parseInt(e.target.value,10);
+  if(isNaN(v)) v=0;
+  N=v;
+  nVal.textContent=(N<=0)?'なし':N;
   updateSoundUI();
   if(started){
     startTime=new Date();
@@ -241,7 +256,7 @@ range.oninput=e=>{
     // 影はリセットしない
     scheduleNextNFrom(startTime);
   }
-};
+}
 
 // ====== 角度/分変換ユーティリティ ======
 const TAU=2*Math.PI;
@@ -326,6 +341,7 @@ function commitTimer(){
   const endM = endDate.getMinutes();
   speakOrBeep(`タイマースタート。${endH}時${endM}分まであと${rMin}分${rSec}秒です`);
   if(actions) actions.style.display='flex';
+  if(preMsg) preMsg.style.display='none';
   resizeCanvas();
   drawClock();
 }
@@ -443,8 +459,6 @@ function resizeCanvas(){
   const actionsSpaceEl = document.getElementById('actionsSpace');
   if(actionsSpaceEl){ actionsSpaceEl.style.width = rect.width + 'px'; }
 }
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
 
 // ====== 時計描画 ======
 function drawClock(){
@@ -639,19 +653,31 @@ function drawClock(){
 }
 
 // ====== 更新ループ ======
-function update(){ drawClock(); tick(); }
+function isPulsing(){ return !timerSet || (endAnnounced && overrunStart); }
+let fps = isPulsing() ? 60 : 1;
+function update(){ drawClock(); tick(); adjustLoop(); }
 let loopHandle;
-function setLoop(active){
-  if(active){
-    if(!loopHandle){
-      update();
-      loopHandle=setInterval(update,1000);
-    }
-  }else if(loopHandle){
+function startLoop(){
+  if(!loopHandle){
+    update();
+    loopHandle=setInterval(update,1000/fps);
+  }
+}
+function stopLoop(){
+  if(loopHandle){
     clearInterval(loopHandle);
     loopHandle=null;
   }
 }
-setLoop(true);
-document.addEventListener('visibilitychange', ()=>setLoop(!document.hidden));
+function adjustLoop(){
+  const desired = isPulsing() ? 60 : 1;
+  if(desired !== fps){
+    fps = desired;
+    if(loopHandle){
+      clearInterval(loopHandle);
+      loopHandle=setInterval(update,1000/fps);
+    }
+  }
+}
+function setLoop(active){ active ? startLoop() : stopLoop(); }
 
