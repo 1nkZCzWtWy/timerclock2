@@ -1,4 +1,4 @@
-body{margin:0;font-family:system-ui,-apple-system;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f6f7f9;min-height:100dvh;overflow-x:hidden;overflow-y:auto;padding-top:12px;padding-bottom:8px;-webkit-user-select:none;user-select:none}
+body{margin:0;font-family:system-ui,-apple-system;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f6f7f9;min-height:100dvh;overflow:hidden;padding-top:12px;padding-bottom:8px;-webkit-user-select:none;user-select:none}
 :root{--ctrl-size:14px;--pill-min-w:96px;--actions-h:0;--pre-msg-size:16px}
 #controls{margin:10px 0 12px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;justify-items:center}
 input[type=range]{width:100%;max-width:400px}
@@ -17,5 +17,3 @@ input[type=range]{width:100%;max-width:400px}
 .confetti.move{transition:transform 1200ms ease-out, opacity 1200ms ease-out}
 @keyframes floatUpFade{from{transform:translate(-50%,-50%);opacity:1}to{transform:translate(-50%,-150%);opacity:0}}
 .remainEffect{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font-weight:700;color:#0a84ff;pointer-events:none;animation:floatUpFade 1.2s ease-out forwards;z-index:5}
-#fullscreenControls{position:fixed;top:8px;right:8px;z-index:20;display:flex;gap:8px}
-#fullscreenControls button{padding:8px 12px;font-size:14px;font-weight:700;border:0;border-radius:8px;background:#0a84ff;color:#fff}
