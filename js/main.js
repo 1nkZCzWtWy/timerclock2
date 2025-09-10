@@ -10,7 +10,7 @@ function ensureAudioCtx(){
 }
 
 const $=id=>document.getElementById(id);
-let clock, ctx, range, nVal, nUnit, soundIcon, gate, gateBtn, nextBtn, resetBtn, actions, preMsg;
+let clock, ctx, range, nVal, nUnit, soundIcon, gate, gateBtn, nextBtn, resetBtn, actions, preMsg, fsEnterBtn, fsExitBtn;
 let ACTIONS_H=0;
 
 function computeActionsHeight(){
@@ -126,6 +126,27 @@ function ensureAudioUnlocked(){
   unlock();
 }
 
+function enterFullscreen(){
+  const elem=document.documentElement;
+  if(elem.requestFullscreen){
+    elem.requestFullscreen();
+  }else if(elem.webkitRequestFullscreen){
+    elem.webkitRequestFullscreen();
+  }
+}
+function exitFullscreen(){
+  if(document.exitFullscreen){
+    document.exitFullscreen();
+  }else if(document.webkitExitFullscreen){
+    document.webkitExitFullscreen();
+  }
+}
+function onFullscreenChange(){
+  const fs=!!(document.fullscreenElement||document.webkitFullscreenElement);
+  if(fsEnterBtn) fsEnterBtn.style.display=fs?'none':'inline-block';
+  if(fsExitBtn) fsExitBtn.style.display=fs?'inline-block':'none';
+}
+
 function init(){
   clock=$('clock');
   ctx=clock.getContext('2d');
@@ -139,11 +160,15 @@ function init(){
   resetBtn=$('resetBtn');
   actions=$('actions');
   preMsg=$('preMsg');
+  fsEnterBtn=$('fsEnterBtn');
+  fsExitBtn=$('fsExitBtn');
   ACTIONS_H=computeActionsHeight();
   if(gateBtn) gateBtn.addEventListener('click', unlock);
   if(nextBtn) nextBtn.addEventListener('click', onNext);
   if(resetBtn) resetBtn.addEventListener('click', resetState);
   if(range) range.addEventListener('input', onRangeInput);
+  if(fsEnterBtn) fsEnterBtn.addEventListener('click', enterFullscreen);
+  if(fsExitBtn) fsExitBtn.addEventListener('click', exitFullscreen);
   if(clock){
     clock.addEventListener('pointerdown', onPointerDown, {passive:false});
     clock.addEventListener('pointermove', onPointerMove, {passive:false});
@@ -154,6 +179,9 @@ function init(){
   startLoop();
   document.addEventListener('visibilitychange', ()=>setLoop(!document.hidden));
   window.addEventListener('resize', resizeCanvas);
+  document.addEventListener('fullscreenchange', onFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+  onFullscreenChange();
 }
 document.addEventListener('DOMContentLoaded', init);
 
