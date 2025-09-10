@@ -15,15 +15,20 @@ let ACTIONS_H=0;
 
 function computeActionsHeight(){
   if(!actions) return 0;
-  const holder=actions.parentElement;
-  const prevHolderH=holder.style.height;
-  holder.style.height='auto';
-  if(preMsg) preMsg.style.display='none';
-  actions.style.display='flex';
-  const h=actions.offsetHeight;
-  actions.style.display='none';
-  if(preMsg) preMsg.style.display='';
-  holder.style.height=prevHolderH;
+  const holder = actions.parentElement;
+  const prevHolderH = holder.style.height;
+  const prevActionsDisplay = actions.style.display;
+  const prevPreMsgDisplay = preMsg ? preMsg.style.display : '';
+
+  holder.style.height = 'auto';
+  if(preMsg) preMsg.style.display = 'none';
+  actions.style.display = 'flex';
+  const h = actions.offsetHeight;
+
+  actions.style.display = prevActionsDisplay;
+  if(preMsg) preMsg.style.display = prevPreMsgDisplay;
+  holder.style.height = prevHolderH;
+
   document.documentElement.style.setProperty('--actions-h', h+'px');
   return h;
 }
@@ -440,6 +445,7 @@ function tick(){
 function resizeCanvas(){
   const margin = 12;
   const controls = document.getElementById('controls');
+  ACTIONS_H = computeActionsHeight();
   const availW = Math.max(100, window.innerWidth - margin*2);
   const availH = Math.max(100, window.innerHeight - (controls?controls.offsetHeight:0) - ACTIONS_H - margin*2);
   const size = Math.floor(Math.min(availW, availH));
