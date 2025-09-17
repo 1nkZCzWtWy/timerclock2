@@ -5,8 +5,6 @@ input[type=range]{width:100%;max-width:400px}
 .pill{background:#eef2ff;padding:6px 12px;border-radius:999px;font-weight:700;font-size:var(--ctrl-size);min-width:var(--pill-min-w);display:inline-flex;align-items:center;justify-content:center}
 .ctrlText{font-size:var(--ctrl-size)}
 #clock{aspect-ratio:1/1;touch-action:none;cursor:pointer}
-#gate{display:none}
-#gate button{padding:14px 18px;font-size:18px;font-weight:800;border:0;border-radius:16px;background:#007aff;color:#fff}
 #actionsSpace{margin:10px 0 12px;height:var(--actions-h);display:flex;justify-content:center;align-items:center;text-align:center}
 #actions{display:none;gap:12px;justify-content:center}
 #preMsg{display:block;font-size:var(--pre-msg-size);font-weight:700;white-space:nowrap}

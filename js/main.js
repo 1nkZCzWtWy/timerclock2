@@ -1,12 +1,150 @@
 let N=5;
 let started=false, startTime=null, startSec=0, startHour=null, startMin=null;
 let audioUnlocked=false, jaVoice=null, audioCtx=null;
+let wakeLockDesired=false;
+let wakeLockSentinel=null;
+let wakeLockReleaseHandler=null;
+let wakeLockRequesting=false;
+let wakeLockRetryAt=0;
+let noSleepInstance=null;
+let noSleepEnabled=false;
+let noSleepCtorPromise=null;
+let loopActive=false;
 
 function ensureAudioCtx(){
   if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
   if(audioCtx.state==='suspended' && typeof audioCtx.resume==='function'){
     audioCtx.resume().catch(()=>{});
   }
+}
+
+function loadNoSleepCtor(){
+  if(typeof NoSleep!=='undefined'){
+    return Promise.resolve(NoSleep);
+  }
+  if(noSleepCtorPromise){
+    return noSleepCtorPromise;
+  }
+  noSleepCtorPromise=import('https://cdn.jsdelivr.net/npm/nosleep.js@0.12.0/dist/NoSleep.min.js')
+    .then(mod=>mod?.default||mod?.NoSleep||null)
+    .catch(()=>null);
+  return noSleepCtorPromise;
+}
+
+function enableNoSleepFallback(){
+  if(noSleepEnabled) return;
+  loadNoSleepCtor().then(Ctor=>{
+    if(!Ctor) return;
+    if(!noSleepInstance){
+      try{ noSleepInstance=new Ctor(); }
+      catch(_){ noSleepInstance=null; return; }
+    }
+    if(!noSleepEnabled && noSleepInstance && typeof noSleepInstance.enable==='function'){
+      try{
+        noSleepInstance.enable();
+        noSleepEnabled=true;
+      }catch(_){/* noop */}
+    }
+  }).catch(()=>{});
+}
+
+function disableNoSleepFallback(){
+  if(noSleepInstance && noSleepEnabled && typeof noSleepInstance.disable==='function'){
+    try{ noSleepInstance.disable(); }
+    catch(_){/* noop */}
+  }
+  noSleepEnabled=false;
+}
+
+function shouldHoldWakeLock(){
+  return wakeLockDesired && loopActive && !document.hidden;
+}
+
+function releaseWakeLockSentinel(){
+  if(!wakeLockSentinel) return;
+  const sentinel=wakeLockSentinel;
+  const handler=wakeLockReleaseHandler;
+  wakeLockSentinel=null;
+  wakeLockReleaseHandler=null;
+  if(handler){
+    try{ sentinel.removeEventListener('release', handler); }
+    catch(_){/* noop */}
+  }
+  try{
+    const releasePromise=sentinel.release?.();
+    if(releasePromise && typeof releasePromise.catch==='function'){
+      releasePromise.catch(()=>{});
+    }
+  }catch(_){/* noop */}
+}
+
+function acquireWakeLock(){
+  if(wakeLockSentinel || wakeLockRequesting){
+    if(wakeLockSentinel) disableNoSleepFallback();
+    return;
+  }
+  const now=Date.now();
+  if(now<wakeLockRetryAt){
+    return;
+  }
+  wakeLockRequesting=true;
+  const requestPromise=navigator.wakeLock?.request('screen');
+  if(!requestPromise || typeof requestPromise.then!=='function'){
+    wakeLockRequesting=false;
+    enableNoSleepFallback();
+    return;
+  }
+  requestPromise.then(sentinel=>{
+    wakeLockRequesting=false;
+    if(!sentinel) return;
+    if(wakeLockReleaseHandler && wakeLockSentinel){
+      try{ wakeLockSentinel.removeEventListener('release', wakeLockReleaseHandler); }
+      catch(_){/* noop */}
+    }
+    wakeLockSentinel=sentinel;
+    const onRelease=()=>{
+      try{ sentinel.removeEventListener('release', onRelease); }
+      catch(_){/* noop */}
+      if(wakeLockSentinel===sentinel){
+        wakeLockSentinel=null;
+        wakeLockReleaseHandler=null;
+      }
+      if(shouldHoldWakeLock()){
+        wakeLockRetryAt=0;
+        acquireWakeLock();
+      }else{
+        disableNoSleepFallback();
+      }
+    };
+    wakeLockReleaseHandler=onRelease;
+    sentinel.addEventListener('release', onRelease);
+    disableNoSleepFallback();
+  }).catch(()=>{
+    wakeLockRequesting=false;
+    wakeLockRetryAt=Date.now()+20000;
+    enableNoSleepFallback();
+  });
+}
+
+function updateWakeLock(){
+  if(shouldHoldWakeLock()){
+    if(navigator.wakeLock?.request){
+      acquireWakeLock();
+    }else{
+      enableNoSleepFallback();
+    }
+  }else{
+    wakeLockRetryAt=0;
+    releaseWakeLockSentinel();
+    disableNoSleepFallback();
+  }
+}
+
+function handleVisibilityChange(){
+  if(!document.hidden){
+    wakeLockRetryAt=0;
+  }
+  setLoop(!document.hidden);
 }
 
 const $=id=>document.getElementById(id);
@@ -104,7 +242,9 @@ function formatTime(h,m){
 function unlock(){
   audioUnlocked=true;
   ensureAudioCtx();
-  gate.style.display='none';
+  if(gate) gate.style.display='none';
+  wakeLockDesired=true;
+  updateWakeLock();
   // ベースラインやスケジュールは initBaseline/reset が担当
 }
 
@@ -157,8 +297,8 @@ function init(){
   }
   initBaseline();
   resizeCanvas();
-  startLoop();
-  document.addEventListener('visibilitychange', ()=>setLoop(!document.hidden));
+  setLoop(true);
+  document.addEventListener('visibilitychange', handleVisibilityChange);
   window.addEventListener('resize', resizeCanvas);
 }
 document.addEventListener('DOMContentLoaded', init);
@@ -698,5 +838,14 @@ function adjustLoop(){
     }
   }
 }
-function setLoop(active){ active ? startLoop() : stopLoop(); }
+function setLoop(active){
+  const shouldRun=!!active;
+  loopActive=shouldRun;
+  if(shouldRun){
+    startLoop();
+  }else{
+    stopLoop();
+  }
+  updateWakeLock();
+}
 
